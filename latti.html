@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Details</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #eef2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 1000px;
+        }
+
+        .details {
+            flex: 1;
+            margin-right: 20px;
+        }
+
+        .details h1 {
+            color: #0077b6;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .details p {
+            font-size: 18px;
+            color: #333333;
+            margin: 10px 0;
+        }
+
+        .details .no-data {
+            color: red;
+            font-weight: bold;
+        }
+
+        .details .go-back {
+            margin-top: 20px;
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #0077b6;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .details .go-back:hover {
+            background-color: #005f8b;
+            transform: scale(1.05);
+        }
+
+        .chart-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Location Details -->
+        <div class="details">
+            <h1>Location Data</h1>
+            <div id="locationInfo">
+                <!-- Data will be displayed here -->
+            </div>
+            <a href="index.html" class="go-back">Go Back</a>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-container">
+            <canvas id="groundwaterChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Dataset containing groundwater levels and other details
+        const dataset = [
+            { place: "Chennai, Tamil Nadu", latitude: 13.0827, longitude: 80.2707, gwl: 10.2, temperature: "32.5 °C", humidity: "75%" },
+            { place: "Mumbai, Maharashtra", latitude: 19.0760, longitude: 72.8777, gwl: 5.4, temperature: "30.2 °C", humidity: "78%" },
+            { place: "Jaipur, Rajasthan", latitude: 26.9124, longitude: 75.7873, gwl: 35.7, temperature: "28.8 °C", humidity: "62%" },
+            { place: "Kolkata, West Bengal", latitude: 22.5726, longitude: 88.3639, gwl: 3.9, temperature: "29.7 °C", humidity: "80%" },
+            { place: "Bengaluru, Karnataka", latitude: 12.9716, longitude: 77.5946, gwl: 12.8, temperature: "27.1 °C", humidity: "70%" },
+            { place: "Hyderabad, Telangana", latitude: 17.3850, longitude: 78.4867, gwl: 8.3, temperature: "29.5 °C", humidity: "68%" },
+            { place: "Ahmedabad, Gujarat", latitude: 23.0225, longitude: 72.5714, gwl: 20.6, temperature: "31.3 °C", humidity: "55%" },
+            { place: "Lucknow, Uttar Pradesh", latitude: 26.8467, longitude: 80.9462, gwl: 15.9, temperature: "28.9 °C", humidity: "72%" },
+            { place: "Pune, Maharashtra", latitude: 18.5204, longitude: 73.8567, gwl: 9.4, temperature: "30.0 °C", humidity: "68%" },
+            { place: "Coimbatore, Tamil Nadu", latitude: 11.0168, longitude: 76.9558, gwl: 14.5, temperature: "31.2 °C", humidity: "67%" }
+        ];
+
+        // Function to retrieve query parameters
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        // Get latitude and longitude from URL
+        const latitude = parseFloat(getQueryParam("latitude"));
+        const longitude = parseFloat(getQueryParam("longitude"));
+
+        const locationInfo = document.getElementById("locationInfo");
+
+        let currentGwl = 0; // Current groundwater level to project future levels
+
+        // Check for valid latitude and longitude
+        if (!isNaN(latitude) && !isNaN(longitude)) {
+            // Find matching data from the dataset
+            const result = dataset.find(data => data.latitude === latitude && data.longitude === longitude);
+
+            if (result) {
+                // Display matched data
+                currentGwl = result.gwl;
+                locationInfo.innerHTML = `
+                    <p><strong>Place:</strong> ${result.place}</p>
+                    <p><strong>Latitude:</strong> ${result.latitude}</p>
+                    <p><strong>Longitude:</strong> ${result.longitude}</p>
+                    <p><strong>Groundwater Level:</strong> ${result.gwl} meters</p>
+                    <p><strong>Temperature:</strong> ${result.temperature}</p>
+                    <p><strong>Humidity:</strong> ${result.humidity}</p>
+                `;
+            } else {
+                locationInfo.innerHTML = `<p class="no-data">No data found for the entered latitude and longitude.</p>`;
+            }
+        } else {
+            locationInfo.innerHTML = `<p class="no-data">Invalid latitude or longitude provided.</p>`;
+        }
+
+        // Generate future groundwater level projections with minor fluctuations
+        function generateFutureGwl(currentGwl, startYear) {
+            const futureLevels = [];
+            const years = [];
+            for (let i = 0; i < 7; i++) {
+                years.push(startYear + i); // Generate year labels (e.g., 2024 to 2030)
+                currentGwl += Math.random() * 1.5 - 0.5; // Simulate yearly increase with small fluctuations
+                futureLevels.push(Math.max(currentGwl, 0)); // Avoid negative values
+            }
+            return { years, futureLevels };
+        }
+
+        // Create the line chart
+        const ctx = document.getElementById('groundwaterChart').getContext('2d');
+        const startYear = 2024;
+        const { years, futureLevels } = generateFutureGwl(currentGwl, startYear);
+
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: years, // Year labels
+                datasets: [{
+                    label: 'Projected Groundwater Level (meters)',
+                    data: futureLevels,
+                    fill: true,
+                    backgroundColor: 'rgba(0, 119, 182, 0.2)', // Soft gradient fill
+                    borderColor: '#0077b6', // Vibrant blue line
+                    pointBackgroundColor: '#0077b6', // Points on the graph
+                    pointBorderColor: '#ffffff',
+                    pointHoverBackgroundColor: '#ffffff',
+                    pointHoverBorderColor: '#0077b6',
+                    tension: 0.4, // Curve line
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#333333',
+                            font: {
+                                size: 14
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Groundwater Level (m)',
+                            color: '#333333',
+                            font: {
+                                size: 14
+                            }
+                        },
+                        grid: {
+                            color: '#e0e0e0'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Year',
+                            color: '#333333',
+                            font: {
+                                size: 14
+                            }
+                        },
+                        grid: {
+                            color: '#e0e0e0'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
